@@ -22,6 +22,24 @@ void delay (void) {
 }
 
 void counting (sw2) {
+	if (sw2 == 0){//count up
+		if ( count == 9 ) {//if 9 has been reached, go to 0 
+			count = 0; 
+		}	
+		else { //else increment by 1
+			count += 1;
+		}
+
+	}
+	else if ( sw2 == 1 ){//count down
+		if (count == 0 ) { //if 0 has been reached, go to 9
+			count = 9 ; 
+		}
+		else { //else decrement by 1
+			count -= 1;
+		}
+	}
+	DDRT = count;//output count to DDRT
 }
 
 void main (void) {
@@ -29,8 +47,8 @@ void main (void) {
 	DDRA = 0; //set PA0 to 0
 	char sw2; //state of S2
 	DDRB = 0 //set PB4 to 0
-	char count; //state of the count
-	static char count = 0; //initialize count to 0
+	static unsigned char count; //state of the count
+	count = 0; //initialize count to 0
 	while (1){
 		sw1 = DDRA & 0x01;//read PORTA and isolate bit 0
 		while (sw1 == 1) {//while S1 is on, count, up or down
@@ -38,7 +56,5 @@ void main (void) {
 			sw2 = DDRB & 0x04;//read PORTB and isolate bit 4
 			counting(sw2);//call the counting function and tell it how to count
 		}
-
-	       	
 	} /* repeat forever */
 }
