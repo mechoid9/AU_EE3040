@@ -18,7 +18,7 @@ char sw2; //state of S2
  *  i<50 for 1/2 second	*/
 void delay (void) {
 	int i,j;
-	for (i=0; i<25; i++) { //outer loop, 
+	for (i=0; i<25; i++) { //outer loop, "i<50" seems too slow 
 		for (j=0; j<20000; j++) { //inner loop 
 		}
 	}
@@ -43,6 +43,8 @@ void counting (char sw2) {
 		}
 	}
 	PTT = count;//output count to DDRT
+	PTT_PTT6 = sw1;//set PTT bit 6 to value of switch 1
+	PTT_PTT7 = sw2;//set PTT bit 7 to value of switch 2
 }
 
 void main (void) {
@@ -52,9 +54,12 @@ void main (void) {
 	count = 0; //initialize count to 0
 	while (1){
 		sw1 = PORTA & 0x01;//read PORTA and isolate bit 0
+		PTT_PTT6 = sw1;//set PTT bit 6 to value of switch 1
+		sw2 = PORTB_BIT4;//read PORTB bit 4
+		PTT_PTT7 = sw2;//set PTT bit 7 to value of switch 2
 		delay();//delay for a bit
 		if (sw1 == 1) {//while S1 is on, count, up or down
-			sw2 = PORTB_BIT4;//read PORTB and isolate bit 4
+		  //sw2 = PORTB_BIT4;//read PORTB bit 4//moved outside of statement
 		  counting(sw2);//call the counting function and tell it how to count
 		}
 	} /* repeat forever */
