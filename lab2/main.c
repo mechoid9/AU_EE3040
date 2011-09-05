@@ -10,18 +10,21 @@
 #include <MC9S12C32.h>  /* derivative information */
 #pragma LINK_INFO DERIVATIVE "MC9S12C32"
 
+static unsigned char count; //state of the count
+char sw1; //state of S1
+char sw2; //state of S2
 /* function delay, based from lab1 main.c 
  *  i<100 should be about 1 second, so choose
  *  i<50 for 1/2 second	*/
 void delay (void) {
 	int i,j;
-	for (i=0; i<100; i++) { //outer loop, 
+	for (i=0; i<25; i++) { //outer loop, 
 		for (j=0; j<20000; j++) { //inner loop 
 		}
 	}
 }
 
-void counting (sw2) {
+void counting (char sw2) {
 	if (sw2 == 0){//count up
 		if ( count == 9 ) {//if 9 has been reached, go to 0 
 			count = 0; 
@@ -31,7 +34,7 @@ void counting (sw2) {
 		}
 
 	}
-	else if ( sw2 == 1 ){//count down
+	else if (sw2 == 1){//count down
 		if (count == 0 ) { //if 0 has been reached, go to 9
 			count = 9 ; 
 		}
@@ -39,22 +42,20 @@ void counting (sw2) {
 			count -= 1;
 		}
 	}
-	DDRT = count;//output count to DDRT
+	PTT = count;//output count to DDRT
 }
 
 void main (void) {
-	char sw1; //state of S1
 	DDRA = 0; //set PA0 to 0
-	char sw2; //state of S2
-	DDRB = 0 //set PB4 to 0
-	static unsigned char count; //state of the count
+	DDRB = 0; //set PB4 to 0
+	DDRT = 0xFF; //set PortT to 1
 	count = 0; //initialize count to 0
 	while (1){
-		sw1 = DDRA & 0x01;//read PORTA and isolate bit 0
-		while (sw1 == 1) {//while S1 is on, count, up or down
-			delay ();//delay for a bit
-			sw2 = DDRB & 0x04;//read PORTB and isolate bit 4
-			counting(sw2);//call the counting function and tell it how to count
+		sw1 = PORTA & 0x01;//read PORTA and isolate bit 0
+		delay();//delay for a bit
+		if (sw1 == 1) {//while S1 is on, count, up or down
+			sw2 = PORTB_BIT4;//read PORTB and isolate bit 4
+		  counting(sw2);//call the counting function and tell it how to count
 		}
 	} /* repeat forever */
 }
