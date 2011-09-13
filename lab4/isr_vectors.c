@@ -2,6 +2,8 @@
 extern void near _Startup(void);       /* Startup routine */
 extern void near RTI_ISR(void);
 extern void near SCI0_ISR(void);
+extern void near IRQ_ISR(void); /*IRQ interupt function in main.c*/
+extern void near XIRQ_ISR(void); /*XIRQ interupt funtion in main.c*/
 
 #pragma CODE_SEG __NEAR_SEG NON_BANKED /* Interrupt section for this module. Placement will be in NON_BANKED area. */
 __interrupt void UnimplementedISR(void)
