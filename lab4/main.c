@@ -62,7 +62,7 @@ void count_2 (char dir) {
 			count2 -= 1;
 		}
 	}
-	PORTAD = count2;//output count2 to Port AD
+	PTAD = count2;//output count2 to Port AD
 }
 
 void main (void) {
