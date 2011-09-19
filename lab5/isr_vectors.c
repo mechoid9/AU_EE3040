@@ -3,7 +3,6 @@ extern void near _Startup(void);       /* Startup routine */
 extern void near RTI_ISR(void);
 extern void near SCI0_ISR(void);
 extern void near IRQ_ISR(void); /*IRQ interupt function in main.c*/
-extern void near XIRQ_ISR(void); /*XIRQ interupt funtion in main.c*/
 
 #pragma CODE_SEG __NEAR_SEG NON_BANKED /* Interrupt section for this module. Placement will be in NON_BANKED area. */
 __interrupt void UnimplementedISR(void)
@@ -72,7 +71,7 @@ const tIsrFunc _vect[] @0xFF80 = {     /* Interrupt table */
         UnimplementedISR,                 /* vector 08 */
         UnimplementedISR,                 /* vector 07 */
         IRQ_ISR,                 /* vector 06 */
-        XIRQ_ISR,                 /* vector 05 */
+        UnimplementedISR,         /* vector 05 */
         UnimplementedISR,                 /* vector 04 */
         UnimplementedISR,                 /* vector 03 */
         UnimplementedISR,                 /* vector 02 */
