@@ -1,30 +1,138 @@
 /*-------------------------------------*
- * Brian Arnberg and Stephen Taylor    *
- * ELEC 3040 - Lab 4, main.c           *
- * Two decade counters,                *
- *  PortT (count1) always up           *
- *  PortAD (count2) variable direction *
- *   up - XIRQ activated 	       *
- *   down - IRQ activated              *
+ * Brian Arnberg and Stephen Taylor    
+ * ELEC 3040 - Lab 5, main.c
+ * Keypad programming
+ *  Always count up
+ *  Output Port AD
+ *  Port T 7-4 - keypad columns, (output)
+ *  Port T 3-0 - keypad rows, (input)
+ *  Port E 1 - IRQ           
  *-------------------------------------*/
 #include <hidef.h>      /* common defines and macros */
 #include <MC9S12C32.h>  /* derivative information */
 #pragma LINK_INFO DERIVATIVE "MC9S12C32"
 
-static unsigned char count1; //Count 1 (Port T)
-static unsigned char count2; //Count 2 (Port AD)
-char sw1; //state of S1
-char sw2; //state of S2
-char dir; //count direction (1 is down, 0 is up)
-
-/* Define the XIRQ service routine */
-interrupt void XIRQ_ISR(void) {
- 	dir = 1;//dir = 1 counts down
-}
+static unsigned char count1; //Count 1 - Constant up, output to AD
+static unsigned char count2; //Count 2 - used to display keynumber for 10s
 
 /* Define the IRQ service routine */
 interrupt void IRQ_ISR(void) {
- 	dir = 0;//dir = 0 counts down
+	/*the keynumber is in hex, hex 0-D makes sense
+	 * hex E is * and hex F is # */
+	unsigned char keynumber;
+	/*This is really ugly, but it should work*/
+	PTT = 0xE0; // PTT_PTT4 driven low, C1 low, Celse high
+		if (PTT_PTT0 == 0) {//row 1
+		PTAD = 0x01;//key 1
+		count2 = 10;
+		PTT = 0x00; //reset PTT columns to 0
+		__am rti //use assembly code to exit the interupt
+		}
+		else if (PTT_PTT1 == 0){//row 2
+		PTAD = 0x04;//key 4
+		count2 = 10;
+		PTT = 0x00; //reset PTT columns to 0
+		__am rti //use assembly code to exit the interupt
+		}	
+		else if (PTT_PTT2 == 0){//row 3
+		PTAD = 0x07;//key 7
+		count2 = 10;
+		PTT = 0x00; //reset PTT columns to 0
+		__am rti //use assembly code to exit the interupt
+		}
+		else if (PPT_PTT3 == 0){//row 4
+		PTAD = 0x0E;//key *
+		count2 = 10;
+		PTT = 0x00; //reset PTT columns to 0
+		__am rti //use assembly code to exit the interupt
+		}
+	PTT = 0xD0; // PTT_PTT5 driven low, C2 low, Celse high
+		if (PTT_PTT0 == 0) {//row 1
+		PTAD = 0x02;//key 2
+		count2 = 10;
+		PTT = 0x00; //reset PTT columns to 0
+		__am rti //use assembly code to exit the interupt
+		}
+		else if (PTT_PTT1 == 0){//row 2
+		PTAD = 0x05;//key 5
+		count2 = 10;
+		PTT = 0x00; //reset PTT columns to 0
+		__am rti //use assembly code to exit the interupt
+		}	
+		else if (PTT_PTT2 == 0){//row 3
+		PTAD = 0x08;//key 8
+		count2 = 10;
+		PTT = 0x00; //reset PTT columns to 0
+		__am rti //use assembly code to exit the interupt
+		}
+		else if (PPT_PTT3 == 0){//row 4
+		PTAD = 0x00;//key 0
+		count2 = 10;
+		PTT = 0x00; //reset PTT columns to 0
+		__am rti //use assembly code to exit the interupt
+		}
+	PTT = 0xB0; // PTT_PTT6 driven low, C3 low, Celse high
+		if (PTT_PTT0 == 0) {//row 1
+		PTAD = 0x03;//key 3
+		count2 = 10;
+		PTT = 0x00; //reset PTT columns to 0
+		__am rti //use assembly code to exit the interupt
+		}
+		else if (PTT_PTT1 == 0){//row 2
+		PTAD = 0x06;//key 6
+		count2 = 10;
+		PTT = 0x00; //reset PTT columns to 0
+		__am rti //use assembly code to exit the interupt
+		}	
+		else if (PTT_PTT2 == 0){//row 3
+		PTAD = 0x09;//key 9
+		count2 = 10;
+		PTT = 0x00; //reset PTT columns to 0
+		__am rti //use assembly code to exit the interupt
+		}
+		else if (PPT_PTT3 == 0){//row 4
+		PTAD = 0x0F;//key #
+		count2 = 10;
+		PTT = 0x00; //reset PTT columns to 0
+		__am rti //use assembly code to exit the interupt
+		}
+	PTT = 0x70; // PTT_PTT7 driven low, C4 low, Celse high
+		if (PTT_PTT0 == 0) {//row 1
+		PTAD = 0x0A;//key A
+		count2 = 10;
+		PTT = 0x00; //reset PTT columns to 0
+		__am rti //use assembly code to exit the interupt
+		}
+		else if (PTT_PTT1 == 0){//row 2
+		PTAD = 0x0B;//key B
+		count2 = 10;
+		PTT = 0x00; //reset PTT columns to 0
+		__am rti //use assembly code to exit the interupt
+		}	
+		else if (PTT_PTT2 == 0){//row 3
+		PTAD = 0x0C;//key C
+		count2 = 10;
+		PTT = 0x00; //reset PTT columns to 0
+		__am rti //use assembly code to exit the interupt
+		}
+		else if (PPT_PTT3 == 0){//row 4
+		PTAD = 0x0D;//key D
+		count2 = 10;
+		PTT = 0x00; //reset PTT columns to 0
+		__am rti //use assembly code to exit the interupt
+		}
+/* No Key was found, or there was some other issue, 
+ * display blinking lights */
+	int i,j;
+	unsigned char blink; //blink value 
+	blink = 0x0A; //1010 for LED
+	for (i=0; i<17; i++) { //outer loop, "i<50" seems too slow 
+		for (j=0; j<20000; j++) { //inner loop 
+		}
+		PTAD = blink;
+		blink = ~blink;
+	}
+
 }
 
 /* Delay function - In lab tests show i<17 ~ .5s */ 
@@ -40,49 +148,33 @@ void delay (void) {
 void count_1 (void) {
 	if ( count1 == 9 ) { count1 = 0; }
 	else { count1 +=1; }
-	PTT = count1; // output count1 to Port T
-}
-
-/* Function for the second count.  */
-void count_2 (char dir) {
-	if (dir == 0){//count up
-		if ( count2 == 9 ) {//if 9 has been reached, go to 0 
-			count2 = 0; 
-		}	
-		else { //else increment by 1
-			count2 += 1;
-		}
-
-	}
-	else if (dir == 1){//count down
-		if (count2 == 0 ) { //if 0 has been reached, go to 9
-			count2 = 9 ; 
-		}
-		else { //else decrement by 1
-			count2 -= 1;
-		}
-	}
-	PTAD = count2;//output count2 to Port AD
+	//PTAD = count1; // output count1 to Port AD
 }
 
 void main (void) {
-/*	DDRA = 0; //set PA0 to 0
-	DDRB = 0; //set PB4 to 0 */
 	DDRE = 0; //set Port E to read
-	DDRT = 0xFF; //set PortT to output
+	DDRT = 0x0F; //set PortT bits 7-4 output, 3-0 input
 	DDRAD = 0xFF; //set PortAD to output
-	count1 = 0; //initialize count1 to 0
-	count2 = 0; //initialize count2 to 0
-	dir = 0; //initial direction is up (1 is down)
+	count1 = 0; //initialize count1 to 0 to start count up
+	count2 = 0; //initialize count2 to 0 to prevent countdown
+	PERT = 0xFF; //Enable Port T's pull device
+	PPST = 0xF0; // Port T: 7-4 pull low; 3-0 pull up
 	INTCR_IRQEN = 1; /*enable IRQ# interrupts */
 	INTCR_IRQE = 1; /*IRQ# interrupts edge-triggered */
 	EnableInterrupts; /*clear I mask to enable interrupts */
-	__asm ANDCC #0xBF /*clear X mast to enable XIRQ# */
+	//__asm ANDCC #0xBF /*clear X mast to enable XIRQ# */
 	while (1){
 		delay();//delay for 0.5s
-		count_1();//First Count	
 		delay();//delay for 0.5s
-		count_1();//First Count
-		count_2(dir);//Second Count
+		count_1();//increment count 1	
+		/* if the countdown is greater than 0, decrement by one 
+		 * and do nothing;
+		 *  else output  the "count up" to AD */
+		if ( count2 > 0 ) {
+			count2 -= 1; //decrement countdown 
+		}
+		else {
+			PTAD = count1; //display the current count to AD
+		}
 	} /* repeat forever */
 }
