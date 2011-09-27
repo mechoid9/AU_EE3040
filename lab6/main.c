@@ -92,45 +92,77 @@ interrupt void IRQ_ISR(void) {
 		        }
 		      }
 		    }
+		  }
+		} 
+		/* Test the key press, 
+		 * start or stop if the keypress is 0 */
+		if ( keynumber = 0 && started = 0 ) {//start
+			started = ~started; //toggle the "started" state
+			/* start the clock */
+			TFLG1_C0F = 1; //reset timer interupt
+			TC0 = TCNT + 3125;//set new compare time
+			TIE_C0I = 1;//Timer Interupt Enable 0
+			PTT = 0x0F; //reset PTT columns to 0
+			__asm rti //use assembly code to exit the interupt
 		}
-		PTT = 0x0F; //reset PTT columns to 0
-		__asm rti //use assembly code to exit the interupt
-		
+		else if ( keynumber == 0 && started = 1 ){//stop
+			started = ~started; //toggle the "started" state
+			/* stop the clock and stuff */
+			TIE_C0I = 0; //disable timer interupts
+			PTT = 0x0F; //reset PTT columns to 0
+			__asm rti //use assembly code to exit the interupt
+	       	}
+		/* Else if the keypressed is 1 and the code is in 
+		 * the stopped state, then clear the display */
+		else if ( keynumber = 1 && started = 0 ) {
+			count1 = count2 = 0; //clear the counts to 0
+			PTAD = 0; //clear the LEDs
+			PTT = 0x0F; //reset PTT columns to 0
+			__asm rti //use assembly code to exit the interupt
 		}
 }
 
 
-/* count_1 - increments the count
- * - called by other functions
+/* countup - increments the count
+ * - executed by timer interupt
  * - outputs to Port AD */
-void count_1 (void) {
+interupt void countup (void) {
 	if ( count2 == 9 ) { 
 		count2 = 0; 
 		if ( count1 == 9 ) {
-			count1 =  0;
+			count1 = 0;
 			count2 = 0;
 		} else { count1 += 1; }
 	}
 	else { count2 += 1; }
-	PTAD = count2; // output count1 to Port AD
+	TFLG1_C0F = 1; //reset timer interupt
+	TC0 = TCNT + 3125;//set new compare time
+	TIE_C0I = 1;//Timer Interupt Enable 0
+	PTAD = count1*16 + count2; // output BCD to Port AD
 }
 
 void main (void) {
 	DDRE = 0; //set Port E to read
 	DDRT = 0xF0; //set PortT bits 7-4 output, 3-0 input
 	DDRAD = 0xFF; //set PortAD to output
+	
 	count1 = 0; //initialize count1 to 0 to start count up
 	count2 = 0; //initialize count2 to 0 to prevent countdown
+	started = 0; //initialize in the "unstarted" state
+	
 	PERT = 1; //Enable Port T's pull device
 	PPST = 0xF0; // Port T: 7-4 pull low; 3-0 pull up
-	PTT = 0x0F;
+	PTT = 0x0F; //initialize Port T
+	
+	TSCR1_TEN = 1;//enable timer
+	TSCR2_PR = 7;/*prescale factor (binary 111, or factor of 128 */
+	TIOS_IOS0 = 1;/*Set to output compare*/
+	TSCR2_TOI = 0 ; //disable timer overflow interupts
 	INTCR_IRQEN = 1; /*enable IRQ# interrupts */
 	INTCR_IRQE = 1; /*IRQ# interrupts edge-triggered */
 	EnableInterrupts; /*clear I mask to enable interrupts */
 	//__asm ANDCC #0xBF /*clear X mast to enable XIRQ# */
 	while (1){
-		delay();//delay for 0.5s
-		delay();//delay for 0.5s
-		count_1();//increment count 1	
+		}
 	} /* repeat forever */
 }
