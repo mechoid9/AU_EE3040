@@ -17,19 +17,22 @@
 static unsigned char count1; //Count 1 - Left of the decimal      
 static unsigned char count2; //Count 2 - Right of the decimal             
 static unsigned char started; // 1 or 0; 1 = started, 0 = stopped
+int i; // for "for" statements
 /*the keynumber is in hex, hex 0-D makes sense
  * hex E is * and hex F is # */
 static unsigned char keynumber;
 /* Define the IRQ service routine */
 
 interrupt void IRQ_ISR(void) {
-		PTT = 0xF0; 
+	/*	PTT = 0xF0;
+		for (i=0;i<4;i++) {
+		}; //small delay 
 		if (PTT_PTT7 == 0) { } 
-		else {
-		  PTT = 0xE0; // PTT_PTT4 driven low, C1 low, Celse high
-		  PTT = 0xE0; // PTT_PTT4 driven low, C1 low, Celse high
-		  PTT = 0xE0; // PTT_PTT4 driven low, C1 low, Celse high
-		  PTT = 0xE0; // PTT_PTT4 driven low, C1 low, Celse high
+		else {*/
+		PTT = 0xE0; // PTT_PTT4 driven low, C1 low, Celse high
+		PTT = 0xE0; // PTT_PTT4 driven low, C1 low, Celse high
+		PTT = 0xE0; // PTT_PTT4 driven low, C1 low, Celse high
+		PTT = 0xE0; // PTT_PTT4 driven low, C1 low, Celse high
 		if (PTT_PTT0 == 0) {//row 1
 		keynumber = 0x01;//key 1
 		}
@@ -89,44 +92,57 @@ interrupt void IRQ_ISR(void) {
 		        }
 		        else if (PTT_PTT3 == 0){//row 4
 		        keynumber = 0x0D;//key D
+		        } else { //No key found
+		        	PTT = 0x0F; //reset PTT columns to 0
+			        for (i=0;i<4;i++) {
+			        }; //small delay
+		          __asm rti //exit the interrupt because nothing happened
 		        }
 		      }
 		    }
 		  }
-		} 
+		 
 		/* Test the key press, 
 		 * start or stop if the keypress is 0 */
-		if ( keynumber = 0 && started = 0 ) {//start
+		if ( (keynumber == 0) && (started == 0) ) {//start
 			started = ~started; //toggle the "started" state
 			/* start the clock */
+			
 			TFLG1_C0F = 1; //reset timer interupt
 			TC0 = TCNT + 3125;//set new compare time
 			TIE_C0I = 1;//Timer Interupt Enable 0
 			PTT = 0x0F; //reset PTT columns to 0
+			for (i=0;i<4;i++) {
+			}; //small delay
 			__asm rti //use assembly code to exit the interupt
 		}
-		else if ( keynumber == 0 && started = 1 ){//stop
+		else if ( (keynumber == 0) && (started) ){//stop
 			started = ~started; //toggle the "started" state
 			/* stop the clock and stuff */
+			
 			TIE_C0I = 0; //disable timer interupts
 			PTT = 0x0F; //reset PTT columns to 0
+			for (i=0;i<4;i++) {
+			}; //small delay
 			__asm rti //use assembly code to exit the interupt
 	       	}
 		/* Else if the keypressed is 1 and the code is in 
 		 * the stopped state, then clear the display */
-		else if ( keynumber = 1 && started = 0 ) {
+		else if ( (keynumber == 1) && (started == 0) ) {
 			count1 = count2 = 0; //clear the counts to 0
 			PTAD = 0; //clear the LEDs
 			PTT = 0x0F; //reset PTT columns to 0
+			for (i=0;i<4;i++) {
+			}; //small delay
 			__asm rti //use assembly code to exit the interupt
 		}
 }
 
 
-/* countup - increments the count
+/* redelay - increments the count
  * - executed by timer interupt
  * - outputs to Port AD */
-interupt void countup (void) {
+interrupt void TIMER_CHANNEL_0 (void) {
 	if ( count2 == 9 ) { 
 		count2 = 0; 
 		if ( count1 == 9 ) {
@@ -157,12 +173,12 @@ void main (void) {
 	TSCR1_TEN = 1;//enable timer
 	TSCR2_PR = 7;/*prescale factor (binary 111, or factor of 128 */
 	TIOS_IOS0 = 1;/*Set to output compare*/
-	TSCR2_TOI = 0 ; //disable timer overflow interupts
+	
 	INTCR_IRQEN = 1; /*enable IRQ# interrupts */
 	INTCR_IRQE = 1; /*IRQ# interrupts edge-triggered */
 	EnableInterrupts; /*clear I mask to enable interrupts */
 	//__asm ANDCC #0xBF /*clear X mast to enable XIRQ# */
 	while (1){
-		}
+		
 	} /* repeat forever */
 }
