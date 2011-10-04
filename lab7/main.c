@@ -105,18 +105,19 @@ interrupt void IRQ_ISR(void) {
 		TIE_C0I = 1;//Timer Interupt Enable 0
 		started=~started;//toggle started
 		}
-		current = keynumber; //current mode
+		current = keynumber+1; //current mode
 		PTAD = 0x0F; //reset PTAD columns to 0
 		for (i=0;i<4;i++) {}; //small delay
 		__asm rti //use assembly code to exit the interupt
 	}
 	else if (keynumber == 0) {//set current mode to stop
-		if (started) {//stop
-		current = keynumber; //current mode
+		current = keynumber+1; //current mode
 		TCTL2_OM5 = 1; /*Force PT5 to 0 */
 		TCTL2_OL5 = 0;
-		started=~started;//toggle started
-		}
+		started=0;//toggle started
+	}
+
+		
 
 
 }
@@ -169,6 +170,10 @@ void main (void) {
 	EnableInterrupts; /*clear I mask to enable interrupts */
 	//__asm ANDCC #0xBF /*clear X mast to enable XIRQ# */
 	while (1){
+		PTT_PTT0 = current & 0x01;//output to PTT0-3
+		PTT_PTT1 = current & 0x02;
+		PTT_PTT2 = current & 0x04;
+		PTT_PTT3 = current & 0x08;
 	__asm wai //Wait for interupt	
 	} /* repeat forever */
 }
