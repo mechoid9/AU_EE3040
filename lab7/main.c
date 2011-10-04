@@ -115,6 +115,9 @@ interrupt void IRQ_ISR(void) {
 		TCTL2_OM5 = 1; /*Force PT5 to 0 */
 		TCTL2_OL5 = 0;
 		started=0;//toggle started
+		PTAD = 0x0F; //reset PTAD columns to 0
+		for (i=0;i<4;i++) {}; //small delay
+		__asm rti //use assembly code to exit the interupt
 	}
 
 		
