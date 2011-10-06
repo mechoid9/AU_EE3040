@@ -12,21 +12,17 @@
 #include <hidef.h>      /* common defines and macros */
 #include <MC9S12C32.h>  /* derivative information */
 #pragma LINK_INFO DERIVATIVE "MC9S12C32"
-#define PERIOD 4000 /* A period of 1ms is 4000 cycles*/
+#define PERIOD 250 /* A period of 1ms is 4000 cycles*/
 
-static unsigned char count1; //Count 1 - Left of the decimal      
-static unsigned char count2; //Count 2 - Right of the decimal             
-static unsigned char started; // 1 or 0; 1 = started, 0 = stopped
-static unsigned char high; //1 or 0; 1 = voltage high, 0 = low
 /* Duty Cycles */
-unsigned int duty[10]={0,400,800,1200,1600,2000,2400,2800,3200,3600}
+unsigned int duty[10]={0,25,50,75,100,125,150,175,200,225}
 int i; // for "for" statements
 /*the keynumber is in hex, hex 0-D makes sense
  * hex E is * and hex F is # */
 static unsigned char keynumber;
 /* current command */
-unsigned char current;
-unsigned char previous; //previous timer value
+static unsigned char current;
+unsigned char T2; //length of off time
 /* Define the IRQ service routine */
 interrupt void IRQ_ISR(void) {
 		PTAD = 0xE0; // PTAD_PTAD4 driven low, C1 low, Celse high
@@ -90,47 +86,36 @@ interrupt void IRQ_ISR(void) {
 			        }; //small delay
 		          __asm rti //exit the interrupt because nothing happened
 		        }
+			    }
 		      }
+			    }
 		    }
-		  }
-		 
-	if ( (keynumber <= 9) && (keynumber >= 1) ) {//Set the current mode
-		if (!started) {//if not started, then initialize
-		TSCR1_TEN = 1;//enable timer
-		TIOS_IOS0 = 1;/*Set to output compare, Bit 0*/
-		TCTL2_OM5 = 0; /*Output Compair toggles PTT_PTT5 */
-		TCTL2_OL5 = 1;
-		TFLG1_C0F = 1; //reset timer interupt
-		TC0 = TCNT + PERIOD;//set new compare time
-		TIE_C0I = 1;//Timer Interupt Enable 0
-		started=~started;//toggle started
+			    }
 		}
-		current = keynumber+1; //current mode
-		PTAD = 0x0F; //reset PTAD columns to 0
-		for (i=0;i<4;i++) {}; //small delay
-		__asm rti //use assembly code to exit the interupt
-	}
+			    }
+		 
+	current = keynumber; //current mode
+
+	if ( (keynumber <= 9) && (keynumber >= 1) ) {//Set the current mode
+		PWMDTY5 = duty[current];//set duty cycle
+		PWME_PWME5 = 1;// enable chanel 5
+		}
 	else if (keynumber == 0) {//set current mode to stop
-		current = keynumber+1; //current mode
-		TCTL2_OM5 = 1; /*Force PT5 to 0 */
-		TCTL2_OL5 = 0;
-		started=0;//toggle started
-	}
+		PWMDTY5 = 0;//disable
+		PWME_PWME5 = 0;
+		}
 
-		
-
-
+	PTAD = 0x0F; //reset PTAD columns to 0
+	for (i=0;i<4;i++) {}; //small delay
+	__asm rti //use assembly code to exit the interupt
 }
 
 
-/* TIMER_CHANNEL_0 - toggles PWM    
- * - executed by timer interupt
+/* TIMER_CHANNEL_0 - does nothing   
+ * - this is just a place holder
  * - No Output          */
-interrupt void TIMER_CHANNEL_0 (void) {
-	//do nothing
+interrupt void TIMER_CHANNEL_0 (void) {	//do nothing
 }
-
-
 
 void main (void) {
 	DDRE = 0; //set Port E to read
@@ -138,36 +123,28 @@ void main (void) {
 	DDRAD = 0xF0; //set PortAD bits 7-4 output, 3-0 input
 	ATDDIEN = 0x0F; //Enable digital input buffer
 	
-	count1 = 0; //initialize count1 to 0 to start count up
-	count2 = 0; //initialize count2 to 0 to prevent countdown
-	started = 0; //initialize in the "unstarted" state
-	high = 0; //initialize high to 0
-	current = 1;//current mode is 
+	current = 0;//current mode is 
 
 	PERAD = 1; //Enable Port AD's pull device
 	PPSAD = 0xF0; // Port AD: 7-4 pull low; 3-0 pull up
 	PTAD = 0x0F; //initialize Port AD 
 	
-    PWMDTY5 =0;
-    PWMPER5 = 4000;
-    PWMCTL_CON45 = 0;
-    PWME_PWME5 = 1;
-    PWMPOL_PPOL5 = 1;
-    PWMCAE_CAE5 = 0;
-    PWMPRCLK_PCKA = 5;
-    PWMCLK_PCLK5 = 0;
-    PWMPER5 = 125;
-    PWMDTY5 = 0;	   
+    PWMDTY4 =0;//period on channel 4 to 0
+    PWMPER4 = 0;//duty on channel 4 to 0
+    PWMCTL_CON45 = 0;//channels 4 and 5 are separate
+    PWME_PWME5 = 1;//signal on PWM
+    PWMPOL_PPOL5 = 1;//signal high at beginning of period, Channel 5
+    PWMCAE_CAE5 = 0;//channel 5 operates in left-aligned mode
+    PWMPRCLK_PCKA = 4;//divide bus clock frequency by 16
+    PWMCLK_PCLK5 = 0;//select clock A
+    PWMPER5 = 250;//period length for 1ms
+    PWMDTY5 = 0;//set a zero length duty cycle 
 
 	INTCR_IRQEN = 1; /*enable IRQ# interrupts */
 	INTCR_IRQE = 1; /*IRQ# interrupts edge-triggered */
 	EnableInterrupts; /*clear I mask to enable interrupts */
 	//__asm ANDCC #0xBF /*clear X mast to enable XIRQ# */
 	while (1){
-		PTT_PTT0 = current & 0x01;//output to PTT0-3
-		PTT_PTT1 = current & 0x02;
-		PTT_PTT2 = current & 0x04;
-		PTT_PTT3 = current & 0x08;
 	__asm wai //Wait for interupt	
 	} /* repeat forever */
 }
