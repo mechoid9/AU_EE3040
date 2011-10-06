@@ -19,14 +19,14 @@ static unsigned char count2; //Count 2 - Right of the decimal
 static unsigned char started; // 1 or 0; 1 = started, 0 = stopped
 static unsigned char high; //1 or 0; 1 = voltage high, 0 = low
 /* Duty Cycles */
-unsigned int duty[10]={0,400,800,1200,1600,2000,2400,2800,3200,3600}
+unsigned int duty[10]={0,400,800,1200,1600,2000,2400,2800,3200,3600};
 int i; // for "for" statements
 /*the keynumber is in hex, hex 0-D makes sense
  * hex E is * and hex F is # */
 static unsigned char keynumber;
 /* current command */
-unsigned char current;
-unsigned char previous; //previous timer value
+static unsigned char current;
+unsigned char T2; //length of off time
 /* Define the IRQ service routine */
 interrupt void IRQ_ISR(void) {
 		PTAD = 0xE0; // PTAD_PTAD4 driven low, C1 low, Celse high
@@ -90,62 +90,80 @@ interrupt void IRQ_ISR(void) {
 			        }; //small delay
 		          __asm rti //exit the interrupt because nothing happened
 		        }
+			    }
 		      }
+			    }
 		    }
-		  }
-		 
+			    }
+		}
+			    }
+			    		 
 	if ( (keynumber <= 9) && (keynumber >= 1) ) {//Set the current mode
 		if (!started) {//if not started, then initialize
 		TSCR1_TEN = 1;//enable timer
 		TIOS_IOS0 = 1;/*Set to output compare, Bit 0*/
-		TCTL2_OM5 = 0; /*Output Compair toggles PTT_PTT5 */
-		TCTL2_OL5 = 1;
+		TCTL1_OM5 = 0; /*Output Compair toggles PTT_PTT5 */
+		TCTL1_OL5 = 1;
 		TFLG1_C0F = 1; //reset timer interupt
 		TC0 = TCNT + PERIOD;//set new compare time
 		TIE_C0I = 1;//Timer Interupt Enable 0
 		started=~started;//toggle started
 		}
-		current = keynumber+1; //current mode
+		current = keynumber; //current mode
+		T2 = PERIOD - duty[current];//time off (not duty)
 		PTAD = 0x0F; //reset PTAD columns to 0
 		for (i=0;i<4;i++) {}; //small delay
+		  PTT = current;
 		__asm rti //use assembly code to exit the interupt
 	}
 	else if (keynumber == 0) {//set current mode to stop
-		current = keynumber+1; //current mode
-		TCTL2_OM5 = 1; /*Force PT5 to 0 */
-		TCTL2_OL5 = 0;
-		started=0;//toggle started
+		current = keynumber; //current mode
+		TCTL1_OM5 = 1; /*Force PT5 to 0 */
+		TCTL1_OL5 = 0;
+		started=0;//stopped
+		high=0;//low
 		PTAD = 0x0F; //reset PTAD columns to 0
 		for (i=0;i<4;i++) {}; //small delay
+		  PTT = current;
 		__asm rti //use assembly code to exit the interupt
 	}
-
-		
-
-
 }
+		    
+
+
 
 
 /* TIMER_CHANNEL_0 - toggles PWM    
  * - executed by timer interupt
- * - No Output          */
+ * - outputs PWM          */
 interrupt void TIMER_CHANNEL_0 (void) {
 	if (!high) { //turn on
 	high = ~high;//toggle high state
+	PORTA_BIT0=1;//set to on
 	TFLG1_C0F = 1; //reset timer interupt
-	previous = TC0;//set the previous value
-	TC0 += duty[keynumber];//set new compare time(at the end of duty cycle)
+	//T2 = PERIOD - duty[current];//the "off" time is period minus duty
+	TC0 += duty[current];//set new compare time(at the end of duty cycle)
 	TIE_C0I = 1;//Timer Interupt Enable 0
 	} else { //turn off
-	high = ~high;//toggle high state
-	TFLG1_C0F = 1; //reset timer interupt
-	TC0 = previous + PERIOD//set new compare time(beginning of next period)
-	TIE_C0I = 1;//Timer Interupt Enable 0
+  if (keynumber == 0) {
+	 PORTA_BIT0=0;//set to off
+	 //TFLG1_C0F = 1; //reset timer interupt
+	 //TC0 += T2;//next compare time is T2 cycles away
+	 //TIE_C0I = 1;//Timer Interupt Enable 0
+   } else {
+  	high = ~high;//toggle high state
+	  PORTA_BIT0=0;//set to off
+	  TFLG1_C0F = 1; //reset timer interupt
+       TC0 += T2;//next compare time is T2 cycles away
+	  TIE_C0I = 1;//Timer Interupt Enable 0
+   }
 	}
 }
+			  
 
 
 void main (void) {
+  DDRA = 1;//output to A
 	DDRE = 0; //set Port E to read
 	DDRT = 0xFF; //set PortT to output 
 	DDRAD = 0xF0; //set PortAD bits 7-4 output, 3-0 input
@@ -160,12 +178,12 @@ void main (void) {
 	PERAD = 1; //Enable Port AD's pull device
 	PPSAD = 0xF0; // Port AD: 7-4 pull low; 3-0 pull up
 	PTAD = 0x0F; //initialize Port AD 
-/*	
-	TSCR1_TEN = 1;//enable timer
+	
+/*	TSCR1_TEN = 1;//enable timer
 	//TSCR2_PR = 7; //prescale factor (binary 111, or factor of 128
 	TIOS_IOS0 = 1;//Set to output compare, Bit 0
-	TCTL2_OM5 = 0; //Output Compair toggles PTT_PTT5
-	TCTL2_OL5 = 1;
+	TCTL1_OM5 = 0; //Output Compair toggles PTT_PTT5
+	TCTL1_OL5 = 1;
 	TC0 = TCNT;//Initialize TC0
 */	
 	INTCR_IRQEN = 1; /*enable IRQ# interrupts */
@@ -173,10 +191,7 @@ void main (void) {
 	EnableInterrupts; /*clear I mask to enable interrupts */
 	//__asm ANDCC #0xBF /*clear X mast to enable XIRQ# */
 	while (1){
-		PTT_PTT0 = current & 0x01;//output to PTT0-3
-		PTT_PTT1 = current & 0x02;
-		PTT_PTT2 = current & 0x04;
-		PTT_PTT3 = current & 0x08;
+  
 	__asm wai //Wait for interupt	
 	} /* repeat forever */
 }
