@@ -173,7 +173,7 @@ void main (void) {
 	count2 = 0; //initialize count2 to 0 to prevent countdown
 	started = 0; //initialize in the "unstarted" state
 	high = 0; //initialize high to 0
-	current = 1;//current mode is 
+	current = 0;//current mode is 0 
 
 	PERAD = 1; //Enable Port AD's pull device
 	PPSAD = 0xF0; // Port AD: 7-4 pull low; 3-0 pull up
