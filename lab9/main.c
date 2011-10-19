@@ -13,7 +13,7 @@
 #include <MC9S12C32.h>  /* derivative information */
 #pragma LINK_INFO DERIVATIVE "MC9S12C32"
 
-int PERIOD 250 /* A period of 1ms is 4000 cycles*/
+int PERIOD = 250; //for 1ms
 /* Duty Cycles */
 unsigned int duty[10]={0,25,50,75,100,125,150,175,200,225};
 int i; // for "for" statements
@@ -22,10 +22,11 @@ int i; // for "for" statements
 static unsigned char keynumber;
 /* current command */
 static unsigned char current;
-int previous;//previous TCNT, used in period
-int new;//current TCNT, used in period
-int T;//period length in cycles
-int overflow;//value of over-flow to be added to new in case of overflow(s) 
+unsigned long previous;//previous TCNT, used in period
+unsigned long neww;//current TCNT, used in period
+unsigned long T;//period length in cycles
+unsigned long overflow;//value of over-flow to be added to new in case of overflow(s) 
+unsigned long hold_it;
 //unsigned char T2; //length of off time
 /* Define the IRQ service routine */
 interrupt void IRQ_ISR(void) {
@@ -121,7 +122,7 @@ interrupt void IRQ_ISR(void) {
  * - resets overflow flag
  */
 interrupt void TIMER_OVERFLOW (void) {	
-	overflow += 65536;//add to the value of the overflow
+	overflow = overflow + 65536;//add to the value of the overflow
 	//reset the timer overflow flag
 	TFLG2_TOF = 1;//reset timer overflow flag
 }
@@ -134,9 +135,10 @@ interrupt void TIMER_OVERFLOW (void) {
  * - period in time is T*32uS
  */
 interrupt void TIMER_CHANNEL_0 (void) {	
-	new = TCNT + overflow;//set the value of new to be the TCNT
- 	T = new - previous;//find the value of the period
-	previous = new;/* store the current value of TCNT to previous for use in
+	hold_it = TCNT;
+	neww = hold_it + overflow;//set the value of new to be the TCNT
+ 	T = neww - previous;//find the value of the period
+	previous = hold_it;/* store the current value of TCNT to previous for use in
 		  next calculation */
 	overflow = 0; //reset overflow to 0		
 	TFLG1_C0F = 1; //reset timer interupt
@@ -151,14 +153,18 @@ void main (void) {
 	ATDDIEN = 0x0F; //Enable digital input buffer
 	
 	current = 0;//current mode is 0
- 	for (i=0;i<10;i++) { //set the duty periods based on PERIOD in cycles
-	  duty[i] = PERIOD * i * 0.10;
-	}
-	previous = new = overflow = 0;//initialize variables to 0
+ //	for (i=0;i<10;i++) { //set the duty periods based on PERIOD in cycles
+ //	  duty[i] = PERIOD * i * 0.10;
+ //	}
+	previous = neww = overflow = 0;//initialize variables to 0
 
 	PERAD = 1; //Enable Port AD's pull device
 	PPSAD = 0xF0; // Port AD: 7-4 pull low; 3-0 pull up
 	PTAD = 0x0F; //initialize Port AD 
+	
+	PERT = 1; //Enable Port T's pull device
+	PPST = 0xFE; // Port T: 7-4 pull low; 3-0 pull up
+	PTT = 0x0F; //initialize Port T 
 	
 	PWMDTY4 =0;//period on channel 4 to 0
 	PWMPER4 = 0;//duty on channel 4 to 0
@@ -172,10 +178,10 @@ void main (void) {
 	PWMDTY5 = 0;//set a zero length duty cycle 
 
 	TSCR1_TEN = 1;//enable timer
-	TSCR2_PR = 7;/*prescale factor (binary 111, or factor of 128 */
+	TSCR2_PR = 0;/*prescale factor (binary 111, or factor of 128 */
 	TIOS_IOS0 = 0;/*Set to input  compare*/
-	TCTL4_EDG0B = 0;//input capture on PT0 rising edge
-	TCTL4_EDG0A = 1;//input capture on PT0 rising edge		
+	TCTL4_EDG0B = 1;//input capture on PT0 rising edge
+	TCTL4_EDG0A = 0;//input capture on PT0 rising edge		
 	TFLG1_C0F = 1; //reset timer interupt
 	TIE_C0I = 1;//Timer Interupt Enable 0
 	TSCR2_TOI = 1;//enable timer overflow interrupt
