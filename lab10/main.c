@@ -22,12 +22,8 @@ int i; // for "for" statements
 static unsigned char keynumber;
 /* current command */
 static unsigned char current;
-unsigned long previous;//previous TCNT, used in period
-unsigned long neww;//current TCNT, used in period
-unsigned long T;//period length in cycles
-unsigned long overflow;//value of over-flow to be added to new in case of overflow(s) 
-unsigned long hold_it;
-//unsigned char T2; //length of off time
+unsigned char info[255];
+unsigned char j;
 /* Define the IRQ service routine */
 interrupt void IRQ_ISR(void) {
 		PTT = 0xE0; // PTT_PTT4 driven low, C1 low, Celse high
@@ -116,52 +112,48 @@ interrupt void IRQ_ISR(void) {
 	__asm rti //use assembly code to exit the interupt
 }
 
-/* TIMER_OVERFLOW - keep up with overflows
- * - triggers on overflow
- * - each overflow adds to the total value
- * - resets overflow flag
- */
-interrupt void TIMER_OVERFLOW (void) {	
-	overflow = overflow + 65536;//add to the value of the overflow
-	//reset the timer overflow flag
-	TFLG2_TOF = 1;//reset timer overflow flag
-}
 
 
-/* TIMER_CHANNEL_0 - calculates the period
- * - uses the difference between two rising
- *   edges to determine period length 
- * - T is in cycles
- * - period in time is T*32uS
+/* TIMER_CHANNEL_0 - accumulates voltage information
+ * from A/D conversions
  */
 interrupt void TIMER_CHANNEL_0 (void) {	
-	hold_it = TCNT;
-	neww = hold_it + overflow;//set the value of new to be the TCNT
- 	T = neww - previous;//find the value of the period
-	previous = hold_it;/* store the current value of TCNT to previous for use in
-		  next calculation */
-	overflow = 0; //reset overflow to 0		
-	TFLG1_C0F = 1; //reset timer interupt
-	TIE_C0I = 1;//Timer Interupt Enable 0
+  info[j] = ATDDR0H;//insert value from left side
+  j = j + 1;//increment j
+
+  TFLG1_C0F = 1;//reset timer interrupt
+  if (j!=255){
+	  TC0 = TCNT +2500;//update interrupt time
+	  TIE_C0I = 1;//timer interupt enable channel 0
+  } else {
+  j = 0;//reset j 
+  TC0 = TCNT +2500;//update interrupt time
+  TIE_C0I = 1;//timer interupt enable channel 0
+  }
+  asm(nop);//do nothing
+  asm(nop);//do nothing
+
+    
 }
 
 
 void main (void) {
 	DDRE = 0; //set Port E to read
-	DDRT = 0xF0; //set PortT to output 
-	DDRAD = 0xF0; //set PortAD bits 7-4 output, 3-0 input
-	//ATDDIEN = 0x0F; //Enable digital input buffer
+	DDRT = 0xF0; //set PortT  bits 7-4 output, 3-0 input 
+	DDRAD = 0x00; //set PortAD input 
+	ATDDIEN = 0x00 //disable digital input buffer
 	
+	TSCR1_TEN = 1;//enable timer
+	TSCR2_PR = 3;//prescale timer by 2^3 (8)
+	TIOS_IOS0 = 1;//set to output compare on timer channel 0
+
 	current = 0;//current mode is 0
  	for (i=0;i<10;i++) { //set the duty periods based on PERIOD in cycles
  	  duty[i] = PERIOD * i / 10;
  	}
-	previous = neww = overflow = 0;//initialize variables to 0
-
-	PERAD = 1; //Enable Port AD's pull device
-	PPSAD = 0xF0; // Port AD: 7-4 pull low; 3-0 pull up
-	PTAD = 0x0F; //initialize Port AD 
+	j = 0;//initialize variables to 0
 	
+
 	PERT = 1; //Enable Port T's pull device
 	PPST = 0xF0; // Port T: 7-4 pull low; 3-0 pull up
 	PTT = 0x0F; //initialize Port T 
@@ -177,6 +169,26 @@ void main (void) {
 	PWMPER5 = PERIOD;//period length for 1ms
 	PWMDTY5 = 0;//set a zero length duty cycle 
 
+	ATDCTL2_ADPU = 1;//power up
+	ATDCTL2_AFFC = 0;//reset conversion flag by reading status
+	ATDCTL2_AWAI = 0;//continue to run in wait mode
+	ATDCTL2_ETRIGE = 0;//disable external trigger
+	ATDCTL2_ASCIE = 0;//ASCIF != SCF flag
+
+	for (i=0;i<20;i++);//delay for about 20us
+
+	ATDCTL3_S8C = 0;
+	ATDCTL3_S4C = 0;
+	ATDCTL3_S2C = 0;
+	ATDCTL3_S1C = 1;//one conversion/sequence
+	ATDCTL3_FIFO = 0;//each sequence to consecutive registers
+	ATDCTL3_FRZ = 0;//continue during freeze mode
+	
+	ATDCTL4_SRES8 = 1;//8-bit conversion sequence
+	ATDCTL4_SMP = 3;//16 clocks ; sample time select
+	ATDCTL4_PRS = 1;//divide clock by 2 (for 2MHz)
+
+	ATDCTL5_SCAN = 1;//continuous conversion sequences
 //	TSCR1_TEN = 1;//enable timer
 //	TSCR2_PR = 7;/*prescale factor (binary 111, or factor of 128 */
 //	TIOS_IOS0 = 0;/*Set to input  compare*/
@@ -190,7 +202,9 @@ void main (void) {
 	INTCR_IRQEN = 1; /*enable IRQ# interrupts */
 	INTCR_IRQE = 1; /*IRQ# interrupts edge-triggered */
 	EnableInterrupts; /*clear I mask to enable interrupts */
-	//__asm ANDCC #0xBF /*clear X mast to enable XIRQ# */
+	TFLG1_C0F = 1;//set interrupt flag
+	TC0 = TCNT + 1000;
+	TIE_C4I = 1;//enable timer interrupt
 	while (1){
 	__asm wai //Wait for interupt	
 	} /* repeat forever */
