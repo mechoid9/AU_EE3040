@@ -1,12 +1,13 @@
 /*-------------------------------------*
  * Brian Arnberg and Stephen Taylor    
- * ELEC 3040 - Lab 9, main.c
+ * ELEC 3040 - Lab 10, main.c
  * PWM Output Controller        
  *  Keypad 1-9 - Set PWM speeds 1-9 
  *  Keypad 0 - Stop, Speed to 0
- *  Port AD 7-4 - keypad columns, (output)
- *  Port AD 3-0 - keypad rows, (input)
- *  Port T - PWM ouptut
+ *  Port T 7-4 - keypad columns, (output)
+ *  Port T 3-0 - keypad rows, (input)
+ *  PP5 - PWM ouptut
+ *  PPAD bit 0 - ADC capture
  *  Port E 1 - IRQ           
  *-------------------------------------*/
 #include <hidef.h>      /* common defines and macros */
@@ -15,15 +16,15 @@
 
 unsigned long PERIOD = 250; //for 1ms
 /* Duty Cycles */
-int duty[10];//={0,25,50,75,100,125,150,175,200,225};
+int duty[10];
 int i; // for "for" statements
 /*the keynumber is in hex, hex 0-D makes sense
  * hex E is * and hex F is # */
 static unsigned char keynumber;
 /* current command */
 static unsigned char current;
-unsigned char info[255];
-unsigned char j;
+unsigned int sample;
+
 /* Define the IRQ service routine */
 interrupt void IRQ_ISR(void) {
 		PTT = 0xE0; // PTT_PTT4 driven low, C1 low, Celse high
@@ -118,18 +119,12 @@ interrupt void IRQ_ISR(void) {
  * from A/D conversions
  */
 interrupt void TIMER_CHANNEL_0 (void) {	
-  info[j] = ATDDR0H;//insert value from left side
-  j = j + 1;//increment j
-
+  while (ATDSTAT0_SCF == 0); // wait for conversion sequence complete
+  sample = ATDDR0H;//insert value from left side
+ 
   TFLG1_C0F = 1;//reset timer interrupt
-  if (j!=255){
-	  TC0 = TCNT +2500;//update interrupt time
-	  TIE_C0I = 1;//timer interupt enable channel 0
-  } else {
-  j = 0;//reset j 
-  TC0 = TCNT +2500;//update interrupt time
+  TC0 = TCNT + 3125;//update interrupt time
   TIE_C0I = 1;//timer interupt enable channel 0
-  }
   asm(nop);//do nothing
   asm(nop);//do nothing
 
@@ -141,19 +136,17 @@ void main (void) {
 	DDRE = 0; //set Port E to read
 	DDRT = 0xF0; //set PortT  bits 7-4 output, 3-0 input 
 	DDRAD = 0x00; //set PortAD input 
-	ATDDIEN = 0x00 //disable digital input buffer
+	ATDDIEN = 0x00; //disable digital input buffer
 	
 	TSCR1_TEN = 1;//enable timer
-	TSCR2_PR = 3;//prescale timer by 2^3 (8)
+	TSCR2_PR = 7;//prescale timer by 128
 	TIOS_IOS0 = 1;//set to output compare on timer channel 0
 
 	current = 0;//current mode is 0
  	for (i=0;i<10;i++) { //set the duty periods based on PERIOD in cycles
  	  duty[i] = PERIOD * i / 10;
  	}
-	j = 0;//initialize variables to 0
 	
-
 	PERT = 1; //Enable Port T's pull device
 	PPST = 0xF0; // Port T: 7-4 pull low; 3-0 pull up
 	PTT = 0x0F; //initialize Port T 
@@ -203,8 +196,8 @@ void main (void) {
 	INTCR_IRQE = 1; /*IRQ# interrupts edge-triggered */
 	EnableInterrupts; /*clear I mask to enable interrupts */
 	TFLG1_C0F = 1;//set interrupt flag
-	TC0 = TCNT + 1000;
-	TIE_C4I = 1;//enable timer interrupt
+	TC0 = TCNT + 3125;
+	TIE_C0I = 1;//enable timer interrupt
 	while (1){
 	__asm wai //Wait for interupt	
 	} /* repeat forever */
