@@ -1,0 +1,21 @@
+Memory Dump From CodeWarrior Real-Time Debugger to a PC File
+
+1. Drag desired variables from window Data:1 to window Data:2
+   (otherwise you will get the entire microcontroller memory).
+   
+2. In window Data:2, expand the array that you wish to dump
+   to the PC. Format the data to decimal, if desired.
+   
+3. In the Command window (lower right), type after the prompt:
+
+    Data:2 < DUMP
+    
+    (There is a space before and after the "<" symbol.)
+    
+    The data is now dummed into the Command window, from which
+    you can copy and paste into a text editor.
+    
+4. In Excel, you can import the text in "fixed width" columns.
+   After this, apply everything you learned in previous courses
+   to analyze data and create a nice report.
+   
