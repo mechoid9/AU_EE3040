@@ -105,11 +105,17 @@ interrupt void IRQ_ISR(void) {
 		current = keynumber; //current mode
 		PWMDTY5 = duty[current];//set duty cycle
 		PWME_PWME5 = 1;// enable chanel 5
+                TFLG1_C0F = 1;//reset timer interrupt
+                TC0 = TCNT + 125;//set new time interupt
+                TIE_C0I = 1;//timer interupt enable channel 0
 		}
 	else if (keynumber == 0) {//set current mode to stop
 		current = keynumber; //current mode
 		PWMDTY5 = 0;//disable
 		PWME_PWME5 = 0;
+                TFLG1_C0F = 1;//reset timer interrupt
+                TC0 = TCNT + 125;//set new time interupt
+                TIE_C0I = 1;//timer interupt enable channel 0
 		}
 
 	PTT = 0x0F; //reset PTT columns to 0
@@ -133,12 +139,13 @@ interrupt void TIMER_CHANNEL_0 (void) {
     sample[j] = ATDDR0H;//insert value from left side
     stime[j] = TCNT;//save time
    }
+  previous = current;//set the previous command to be the current to quit sampling
   }
-    previous = current;//set the previous command to be the current to quit sampling
- 
-  TFLG1_C0F = 1;//reset timer interrupt
-  TC0 = TCNT + 3125;//check again in 1ms
-  TIE_C0I = 1;//timer interupt enable channel 0
+/* the following three lines commented out 
+ * because they are set in the keypad routine*/ 
+//  TFLG1_C0F = 1;//reset timer interrupt
+//  TC0 = TCNT + 3125;//check again in 1ms
+//  TIE_C0I = 1;//timer interupt enable channel 0
   asm(nop);//do nothing
   asm(nop);//do nothing
 
