@@ -46,9 +46,9 @@ void counting (char sw2) {
 }
 
 void main (void) {
-	DDRA = 0; //set PA0 to 0
-	DDRB = 0; //set PB4 to 0
-	DDRT = 0xFF; //set PortT to 1
+	DDRA = 0; //set PA0 to read
+	DDRB = 0; //set PB4 to read
+	DDRT = 0xFF; //set PortT to write
 	count = 0; //initialize count to 0
 	while (1){
 		sw1 = PORTA & 0x01;//read PORTA and isolate bit 0
